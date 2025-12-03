@@ -85,6 +85,7 @@ import base64
 import easyocr
 from paddleocr import PaddleOCR
 import numpy as np
+import uuid
 
 app = Flask(__name__)
 UPLOAD_FOLDER = './uploads'
@@ -96,7 +97,10 @@ paddleocr_reader = PaddleOCR(use_angle_cls=True, lang='en')  # 'en' for English,
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    txn_id = request.form.get("txn_id", "")
+    txn_id = request.form.get("txn_id")
+    if not txn_id:
+        txn_id = str(uuid.uuid4())
+
     document_type = request.form.get("documentType", "")
 
     # Base response template
@@ -111,8 +115,9 @@ def upload_file():
             response[key]["msg"] = "No file part"
             response[key]["remark"] = "failed"
         return jsonify(response), 400
-
+    
     file = request.files['file']
+
     if file.filename == '':
         for key in response:
             response[key]["msg"] = "No file selected"
@@ -148,7 +153,7 @@ def upload_file():
             pages = convert_from_path(filepath)
             for page in pages:
                 result = easyocr_reader.readtext(np.array(page))
-                easy_text += " ".join([text for (_, text, _) in result])
+                easy_text += " ".join([text for (_, text, _) in result]) #ithe list of tuple aste so aapn join direct use karu shakto.
         else:
             img = Image.open(filepath)
             result = easyocr_reader.readtext(np.array(img))
@@ -165,10 +170,10 @@ def upload_file():
                 result = paddleocr_reader.ocr(np.array(page))
                 for line in result:
                     for _, text, _ in line:
-                        paddle_text += text + " "
+                        paddle_text += text + " " #ithe list of list of tuple aste so join function use karna possible nahi.
         else:
             img = Image.open(filepath)
-            result = paddleocr_reader.ocr(np.array(img))
+            result = paddleocr_reader.predict(np.array(img))
             for line in result:
                 for _, text, _ in line:
                     paddle_text += text + " "
