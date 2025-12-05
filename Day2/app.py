@@ -78,7 +78,7 @@ if __name__ == '__main__':
 
 from flask import Flask, request, jsonify
 import pytesseract
-from PIL import Image
+from PIL import Image, ImageSequence
 from pdf2image import convert_from_path
 import os
 import base64
@@ -145,6 +145,7 @@ def upload_file():
             pages = convert_from_path(filepath)
             for page in pages:
                 tesseract_text += pytesseract.image_to_string(page)
+
         else:
             img = Image.open(filepath)
             tesseract_text = pytesseract.image_to_string(img)
@@ -159,6 +160,7 @@ def upload_file():
             for page in pages:
                 result = easyocr_reader.readtext(np.array(page))
                 easy_text += " ".join([text for (_, text, _) in result]) #ithe list of tuple aste so aapn join direct use karu shakto.
+
         else:
             img = Image.open(filepath)
             result = easyocr_reader.readtext(np.array(img))
@@ -176,6 +178,7 @@ def upload_file():
                 for line in result:
                     for _, text, _ in line:
                         paddle_text += text + " " #ithe list of list of tuple aste so join function use karna possible nahi.
+
         else:
             img = Image.open(filepath)
             result = paddleocr_reader.predict(np.array(img))
