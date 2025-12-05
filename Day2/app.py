@@ -1,5 +1,5 @@
-'''
-from flask import Flask, request, jsonify
+
+'''from flask import Flask, request, jsonify
 import pytesseract
 from PIL import Image
 import os
@@ -73,7 +73,7 @@ def upload_file():
     return jsonify(response)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True)
 '''
 
 from flask import Flask, request, jsonify
@@ -97,11 +97,16 @@ paddleocr_reader = PaddleOCR(use_angle_cls=True, lang='en')  # 'en' for English,
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
+    # print("request data",request)
     txn_id = request.form.get("txn_id")
+    # print("txn_id",txn_id)
     if not txn_id:
         txn_id = str(uuid.uuid4())
 
-    document_type = request.form.get("documentType", "")
+    if request.is_json:
+        document_type = request.json.get("documentType", "")
+    else:
+        document_type = request.form.get("documentType", "")
 
     # Base response template
     response = {
@@ -190,4 +195,4 @@ def upload_file():
     return jsonify(response)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True)
