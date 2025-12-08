@@ -1,0 +1,8 @@
+{
+    "input_image": "",
+    "ocr_result": "HRG HRR Government of India 3ITEITR  Darakhshan Parween Zeeshan Shaikh T ff/D0: 25/02/1997 FEMALE Mobile No: 9798864224 8938 3111 6226 VID : 9187 6470 1640 8093 ART TTETR 4E9 Scanned with OKEN Scanr SHRA FTIOE 4GT SEQUT Unique Identification Authority of India AADHAAR at.  rI, STRI, F , , RC, R-400017 Address: W/O Zeeshan Shaikh, Ground Floor Rajiv Gandhi Nagar, Sion Dharavi, Dharavi, Link Road, Mumbai, Mumbai City, Maharashtra - 400017 8938 3111 6226 VID : 9187 6470 1640 8093 1947",
+    "txn_id": "TXN-7847",
+    "documentType": "AADHAAR",
+    "msg": "PaddleOCR success",
+    "remark": "success"
+}

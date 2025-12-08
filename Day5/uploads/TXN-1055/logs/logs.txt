@@ -1,0 +1,6 @@
+Transaction Started
+Received File: aadhar6.png
+Document Type: 
+OCR Engine: 1
+request_info.txt created
+Response JSON saved

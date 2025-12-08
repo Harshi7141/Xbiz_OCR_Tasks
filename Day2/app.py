@@ -75,6 +75,8 @@ def upload_file():
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000, debug=True)
 '''
+#-----------------------------------------------------------------
+
 
 from flask import Flask, request, jsonify
 import pytesseract
@@ -86,14 +88,17 @@ import easyocr
 from paddleocr import PaddleOCR
 import numpy as np
 import uuid
+import pytesseract
 
 app = Flask(__name__)
 UPLOAD_FOLDER = './uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # Initialize OCR engines
-easyocr_reader = easyocr.Reader(['en', 'mr'], gpu=False)
+easyocr_reader = easyocr.Reader(['en'], gpu=False)
 paddleocr_reader = PaddleOCR(use_angle_cls=True, lang='en')  # 'en' for English, 'ch' for Chinese, etc.
+pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
@@ -139,10 +144,12 @@ def upload_file():
             for key in response:
                 response[key]["input_image"] = encoded_string
 
+        file_ext = file.filename.lower()
         # ---------- Tesseract OCR ----------
         tesseract_text = ""
-        if file.filename.lower().endswith('.pdf'):
-            pages = convert_from_path(filepath)
+        if file_ext.endswith('.pdf'):
+            # pages = convert_from_path(filepath)
+            pages = convert_from_path(filepath, poppler_path=r"C:\poppler-25.12.0\Library\bin")
             for page in pages:
                 tesseract_text += pytesseract.image_to_string(page)
 
@@ -155,8 +162,9 @@ def upload_file():
 
         # ---------- EasyOCR ----------
         easy_text = ""
-        if file.filename.lower().endswith('.pdf'):
-            pages = convert_from_path(filepath)
+        if file_ext.endswith('.pdf'):
+            # pages = convert_from_path(filepath)
+            pages = convert_from_path(filepath, poppler_path=r"C:\poppler-25.12.0\Library\bin")
             for page in pages:
                 result = easyocr_reader.readtext(np.array(page))
                 easy_text += " ".join([text for (_, text, _) in result]) #ithe list of tuple aste so aapn join direct use karu shakto.
@@ -169,25 +177,33 @@ def upload_file():
         response["easyocr_result"]["msg"] = "EasyOCR success"
         response["easyocr_result"]["remark"] = "success"
 
-        # ---------- PaddleOCR ----------
+        # # ---------- PaddleOCR ----------
+        
         paddle_text = ""
-        if file.filename.lower().endswith('.pdf'):
-            pages = convert_from_path(filepath)
+
+        if file_ext.endswith('.pdf'):
+          # pages = convert_from_path(filepath)
+            pages = convert_from_path(filepath, poppler_path=r"C:\poppler-25.12.0\Library\bin")
+              
             for page in pages:
                 result = paddleocr_reader.ocr(np.array(page))
-                for line in result:
-                    for _, text, _ in line:
-                        paddle_text += text + " " #ithe list of list of tuple aste so join function use karna possible nahi.
-
+                if isinstance(result, list) and len(result) > 0:
+                    # Extract rec_texts safely
+                    rec_texts = result[0].get("rec_texts", [])
+                    paddle_text += " ".join(rec_texts) + " "
         else:
             img = Image.open(filepath)
-            result = paddleocr_reader.predict(np.array(img))
-            for line in result:
-                for _, text, _ in line:
-                    paddle_text += text + " "
-        response["paddleocr_result"]["ocr_result"] = paddle_text
+            result = paddleocr_reader.ocr(np.array(img))
+            if isinstance(result, list) and len(result) > 0:
+                rec_texts = result[0].get("rec_texts", [])
+                paddle_text = " ".join(rec_texts)
+
+
+        response["paddleocr_result"]["ocr_result"] = paddle_text.strip()
         response["paddleocr_result"]["msg"] = "PaddleOCR success"
         response["paddleocr_result"]["remark"] = "success"
+
+
 
     except Exception as e:
         error_msg = str(e)
@@ -199,3 +215,6 @@ def upload_file():
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000, debug=True)
+
+
+

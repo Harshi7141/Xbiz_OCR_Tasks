@@ -1,0 +1,8 @@
+{
+    "input_image": "",
+    "ocr_result": "SARAT Maler STR4TT ELECTION COMMISSION OF INDIA 492331 aet 5WC C3 ELECTOR PHOTO IOENTITY CARD GDN0225185 2e 1 : m e o ELECTOR'S NAME : PREM RAI THAKUR Wie le lth :31 FATHER'S NAME : KISHAN DEV THAKUR /Sex yeu/Male / 15/02/1985 DATE OF BIRTH/AGE",
+    "txn_id": "TXN-2478",
+    "documentType": "VOTER ID",
+    "msg": "PaddleOCR success",
+    "remark": "success"
+}

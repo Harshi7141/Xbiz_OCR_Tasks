@@ -1,0 +1,6 @@
+Transaction Started
+Received File: dl3.jpeg
+Document Type: 
+OCR Engine: 1
+request_info.txt created
+Response JSON saved

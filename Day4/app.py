@@ -9,12 +9,13 @@ from paddleocr import PaddleOCR
 import numpy as np
 import uuid
 
+
 app = Flask(__name__)
 UPLOAD_FOLDER = './uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # Initialize OCR engines
-easyocr_reader = easyocr.Reader(['en', 'mr'], gpu=False)
+easyocr_reader = easyocr.Reader(['en'], gpu=False)
 paddleocr_reader = PaddleOCR(use_angle_cls=True, lang='en')  # 'en' for English, 'ch' for Chinese, etc.
 
 @app.route('/upload', methods=['POST'])
@@ -68,6 +69,7 @@ def upload_file():
             for page in pages:
                 tesseract_text += pytesseract.image_to_string(page)
 
+
         elif file.filename.lower().endswith('.tiff') or file.filename.lower().endswith('.tif'):
             img = Image.open(filepath)
             for frame in ImageSequence.Iterator(img):
@@ -76,6 +78,8 @@ def upload_file():
         else:
             img = Image.open(filepath)
             tesseract_text = pytesseract.image_to_string(img)
+#             
+
         response["tesseract_result"]["ocr_result"] = tesseract_text
         response["tesseract_result"]["msg"] = "Tesseract OCR success"
         response["tesseract_result"]["remark"] = "success"
@@ -87,6 +91,7 @@ def upload_file():
             for page in pages:
                 result = easyocr_reader.readtext(np.array(page))
                 easy_text += " ".join([text for (_, text, _) in result]) #ithe list of tuple aste so aapn join direct use karu shakto.
+                
 
         elif file.filename.lower().endswith('.tiff') or file.filename.lower().endswith('.tif'):
             img = Image.open(filepath)
@@ -109,23 +114,21 @@ def upload_file():
             for page in pages:
                 result = paddleocr_reader.ocr(np.array(page))
                 for line in result:
-                    for _, text, _ in line:
-                        paddle_text += text + " " #ithe list of list of tuple aste so join function use karna possible nahi.
+                    paddle_text += line[1][0] + " " #ithe list of list of tuple aste so join function use karna possible nahi.
         
         elif file.filename.lower().endswith('.tif') or file.filename.lower().endswith('.tiff'):
             img = Image.open(filepath)
             for frame in ImageSequence.Iterator(img):
                 result = paddleocr_reader.ocr(np.array(img))
                 for line in result:
-                    for _,text,_ in line:
-                        paddle_text += text + " "
+                    paddle_text += line[1][0] + " "
                         
         else:
             img = Image.open(filepath)
             result = paddleocr_reader.predict(np.array(img))
             for line in result:
-                for _, text, _ in line:
-                    paddle_text += text + " "
+                paddle_text += line[1][0] + " "
+
         response["paddleocr_result"]["ocr_result"] = paddle_text
         response["paddleocr_result"]["msg"] = "PaddleOCR success"
         response["paddleocr_result"]["remark"] = "success"
