@@ -43,20 +43,20 @@ def pdf_to_images_fitz(pdf_path, zoom=4.0):
 
 # ---------- Preprocessing for Strong OCR ----------
 
-def preprocess_image(pil_img):
+# def preprocess_image(pil_img):
 
-    img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    denoise = cv2.fastNlMeansDenoising(gray, h=10)
-    thr = cv2.adaptiveThreshold(denoise, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 31, 2)
-    kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]])
-    sharp = cv2.filter2D(denoise, -1, kernel)
+#     img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+#     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+#     denoise = cv2.fastNlMeansDenoising(gray, h=10)
+#     thr = cv2.adaptiveThreshold(denoise, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 31, 2)
+#     kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]])
+#     sharp = cv2.filter2D(denoise, -1, kernel)
 
-    return {
-        "raw": pil_img,
-        "thr": Image.fromarray(thr),
-        "sharp": Image.fromarray(sharp)
-    }
+#     return {
+#         "raw": pil_img,
+#         "thr": Image.fromarray(thr),
+#         "sharp": Image.fromarray(sharp)
+#     }
 
 
 # ---------- Card Cropping ----------
@@ -120,14 +120,12 @@ def detect_document_type(text):
     ]
 
     if pan_regex:
-        # If false keywords exist → Do NOT classify as PAN
         if not any(kw in t for kw in pan_false_keywords):
             if any(kw in t for kw in pan_card_keywords):
                 doc_types.add("PAN")
 
     #----- aadhaar ------
 
-    # ---------- AADHAAR STRICT DETECTION ----------
     aadhaar_num = re.search(r"\b\d{4}\s*\d{4}\s*\d{4}\b", text)
 
     aadhaar_card_keywords = [
@@ -208,7 +206,7 @@ def detect_document_type(text):
     )
 
     if is_bank_doc:
-        doc_types.add("BANK_DOCUMENT")
+        doc_types.add("BANK DOCUMENT")
 
     if not doc_types:
         return ["OTHER"]
