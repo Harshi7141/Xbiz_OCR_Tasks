@@ -10,6 +10,7 @@ import easyocr
 from paddleocr import PaddleOCR
 import numpy as np
 import uuid
+import cv2
 import random
 import json
 
@@ -37,65 +38,113 @@ def write_log(log_folder, message):
 
 #----- document type
 
+# def detect_document_type(text):
+#     text_lower = text.lower()
+#     doctype = ""
+#     # PAN CARD keywords
+#     if (
+#         "income tax" in text_lower or
+#         "permanent account" in text_lower or
+#         "govt. of india" in text_lower and "card" in text_lower or
+#         "pan" in text_lower
+#     ):
+#         doctype = doctype + "PAN" + " "
+
+#     # AADHAAR CARD keywords
+#     elif (
+#         "aadhaar" in text_lower or
+#         "uidai" in text_lower or
+#         "unique identification authority" in text_lower or
+#         "आधार" in text_lower or
+#         "ಆಧಾರ್" in text_lower or
+#         "ஆதார்" in text_lower or
+#         "ఆధార్" in text_lower
+#     ):
+#         doctype = doctype + "AADHAAR" + " "
+
+#     elif (
+#         "election commission" in text_lower or
+#         "epic" in text_lower or
+#         "voter id" in text_lower or
+#         "elector photo identity" in text_lower or
+#         "eci" in text_lower or
+#         "मतदाता पहचान पत्र" in text_lower or
+#         "मतदाता" in text_lower or
+#         "निर्वाचन आयोग" in text_lower or
+#         "मतदार ओळखपत्र" in text_lower or
+#         "নির্বাচন কমিশন" in text_lower
+#     ):
+#         doctype = doctype + "VOTER ID" + " "
+    
+#     elif (
+#         "driving licence" in text_lower or
+#         "driving license" in text_lower or
+#         "dl no" in text_lower or
+#         "d.l. no" in text_lower or
+#         "licence number" in text_lower or
+#         "license number" in text_lower or
+#         "transport department" in text_lower or
+#         "rto" in text_lower or
+#         "regional transport office" in text_lower or
+#         "ड्राइविंग लाइसेंस" in text_lower or
+#         "वाहन चालविण्याचा परवाना" in text_lower or
+#         "परवाना क्रमांक" in text_lower or
+#         "டிரைவிங் லைசன்ஸ்" in text_lower or
+#         "ಡ್ರೈವಿಂಗ್ ಲೈಸೆನ್ಸ್" in text_lower
+#     ):
+#         doctype += "DRIVING_LICENSE"
+
+#     else:
+#         doctype = doctype + "OTHER" + " "
+#     return doctype
+
+
+
+
 def detect_document_type(text):
     text_lower = text.lower()
+    detected = []
 
-    # PAN CARD keywords
+    # --- PAN ---
     if (
         "income tax" in text_lower or
         "permanent account" in text_lower or
-        "govt. of india" in text_lower and "card" in text_lower or
-        "pan" in text_lower
+        "pan" in text_lower or
+        "govt. of india" in text_lower
     ):
-        return "PAN"
+        detected.append("PAN")
 
-    # AADHAAR CARD keywords
+    # --- AADHAAR ---
     if (
         "aadhaar" in text_lower or
         "uidai" in text_lower or
         "unique identification authority" in text_lower or
-        "आधार" in text_lower or
-        "ಆಧಾರ್" in text_lower or
-        "ஆதார்" in text_lower or
-        "ఆధార్" in text_lower
+        "आधार" in text_lower
     ):
-        return "AADHAAR"
+        detected.append("AADHAAR")
 
+    # --- DRIVING LICENCE ---
+    if (
+        "driving licence" in text_lower or
+        "driving license" in text_lower or
+        "transport department" in text_lower or
+        "mh" in text_lower and "dl" in text_lower
+    ):
+        detected.append("DRIVING_LICENSE")
+
+    # --- VOTER ID ---
     if (
         "election commission" in text_lower or
         "epic" in text_lower or
         "voter id" in text_lower or
-        "elector photo identity" in text_lower or
-        "eci" in text_lower or
-        "मतदाता पहचान पत्र" in text_lower or
-        "मतदाता" in text_lower or
-        "निर्वाचन आयोग" in text_lower or
-        "मतदार ओळखपत्र" in text_lower or
-        "নির্বাচন কমিশন" in text_lower
+        "eci" in text_lower
     ):
-        return "VOTER ID"
-    
-    if (
-        "driving licence" in text_lower or
-        "driving license" in text_lower or
-        "dl no" in text_lower or
-        "d.l. no" in text_lower or
-        "licence number" in text_lower or
-        "license number" in text_lower or
-        "transport department" in text_lower or
-        "rto" in text_lower or
-        "regional transport office" in text_lower or
-        "ड्राइविंग लाइसेंस" in text_lower or
-        "वाहन चालविण्याचा परवाना" in text_lower or
-        "परवाना क्रमांक" in text_lower or
-        "டிரைவிங் லைசன்ஸ்" in text_lower or
-        "ಡ್ರೈವಿಂಗ್ ಲೈಸೆನ್ಸ್" in text_lower
-    ):
-        return "DRIVING_LICENSE"
+        detected.append("VOTER_ID")
 
-    return "OTHER"
+    if not detected:
+        return ["OTHER"]
 
-
+    return detected
 
 def run_ocr(filepath, engine_id):
     file_ext = filepath.lower()
@@ -104,7 +153,7 @@ def run_ocr(filepath, engine_id):
     if engine_id == 1:
         tesseract_text = ""
         if file_ext.endswith('.pdf'):
-            pages = convert_from_path(filepath, poppler_path=r"C:\poppler-25.12.0\Library\bin")
+            pages = convert_from_path(filepath, dpi=300, poppler_path=r"C:\poppler-25.12.0\Library\bin")
             for page in pages:
                 tesseract_text += pytesseract.image_to_string(page, lang=TESS_LANGS)
         
@@ -146,8 +195,10 @@ def run_ocr(filepath, engine_id):
         paddle_text = ""
 
         if file_ext.endswith('.pdf'):
-            pages = convert_from_path(filepath, poppler_path=r"C:\poppler-25.12.0\Library\bin")
+            pages = convert_from_path(filepath, dpi=300, poppler_path=r"C:\poppler-25.12.0\Library\bin")
             for page in pages:
+                page = page.convert("RGB")
+                opencv_img = cv2.cvtColor(np.array(page), cv2.COLOR_RGB2BGR)
                 result = paddleocr_reader.ocr(np.array(page))
 
                 if not result:
@@ -201,9 +252,13 @@ def run_ocr(filepath, engine_id):
 @app.route('/upload', methods=['POST'])
 def upload_file():
 
+    if request.is_json:
+        data = request.json
+    else:
+        data = request.form
 
-    txn_id = request.form.get("txn_id") or request.json.get("txn_id") or generate_txn_id()
-    ocr_engine = int(request.form.get("ocr_engine", 1)) if request.form else int(request.json.get("ocr_engine", 1))
+    txn_id = data.get("txn_id", generate_txn_id())
+    ocr_engine = int(data.get("ocr_engine", 1))
 
     response = {
         "input_image": "",
