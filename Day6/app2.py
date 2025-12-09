@@ -222,14 +222,14 @@ def run_ocr(filepath, engine_id):
             img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             den = cv2.fastNlMeansDenoising(gray, h=10)
-            thr = cv2.adaptiveThreshold(den, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 31, 2)
+            thr = cv2.adaptiveThreshold(den, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 31, 2) #samjla nahi
             kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]])
             sharp = cv2.filter2D(den, -1, kernel)
 
             return [
                 pil_img,
-                Image.fromarray(thr),
-                Image.fromarray(sharp)
+                Image.fromarray(thr), #threshold array or image
+                Image.fromarray(sharp) # sharped arary or image
             ]
         
         
@@ -246,8 +246,8 @@ def run_ocr(filepath, engine_id):
             img_np = cv2.resize(img_np, None, fx=2.5, fy=2.5, interpolation=cv2.INTER_CUBIC)
 
             kernel = np.array([[0, -1, 0],
-                            [-1, 5, -1],
-                            [0, -1, 0]])
+                               [-1, 5, -1],
+                               [0, -1, 0]])
             img_np = cv2.filter2D(img_np, -1, kernel)
 
             img_np = cv2.convertScaleAbs(img_np, alpha=1.4, beta=20)
@@ -276,7 +276,6 @@ def run_ocr(filepath, engine_id):
 
     # --- PaddleOCR ---
     elif engine_id == 3:
-        # print("Paddle Ocr Started")
         if file_ext.endswith('.pdf'):
             pages = pdf_to_images_fitz(filepath)
             for pg in pages:
