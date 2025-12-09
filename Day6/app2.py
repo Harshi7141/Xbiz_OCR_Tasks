@@ -96,10 +96,8 @@ def detect_document_type(text):
     doc_types = set()
     
     # ---- pan ------
-    # ---- PAN detection (strict) ------
     pan_regex = re.search(r"\b[A-Z]{5}\s*\d{4}\s*[A-Z]\b", text, flags=re.I)
 
-    # Words that appear only in real PAN cards
     pan_card_keywords = [
         "permanent account number",
         "income tax department",
@@ -109,7 +107,6 @@ def detect_document_type(text):
         "date of birth"
     ]
 
-    # Words that appear in NON-PAN documents (ITR, Statements etc.)
     pan_false_keywords = [
         "income tax return",
         "itr",
@@ -367,7 +364,7 @@ def upload_file():
                 ext = ".jpg"     # JPEG image
 
             else:
-                ext = ".bin"     # unknown → fallback
+                ext = ".bin"    
             filepath = os.path.join(txn_folder, "input" + ext)
 
             with open(filepath, "wb") as f:
