@@ -41,23 +41,6 @@ def pdf_to_images_fitz(pdf_path, zoom=4.0):
 
     return pages_out
 
-# ---------- Preprocessing for Strong OCR ----------
-
-# def preprocess_image(pil_img):
-
-#     img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
-#     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-#     denoise = cv2.fastNlMeansDenoising(gray, h=10)
-#     thr = cv2.adaptiveThreshold(denoise, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 31, 2)
-#     kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]])
-#     sharp = cv2.filter2D(denoise, -1, kernel)
-
-#     return {
-#         "raw": pil_img,
-#         "thr": Image.fromarray(thr),
-#         "sharp": Image.fromarray(sharp)
-#     }
-
 
 # ---------- Card Cropping ----------
 def extract_cards_from_page(page_image):
