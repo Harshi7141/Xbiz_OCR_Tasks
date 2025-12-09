@@ -245,13 +245,11 @@ def run_ocr(filepath, engine_id):
             img_np = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
             img_np = cv2.resize(img_np, None, fx=2.5, fy=2.5, interpolation=cv2.INTER_CUBIC)
 
-            # STEP 2: Sharpen
             kernel = np.array([[0, -1, 0],
                             [-1, 5, -1],
                             [0, -1, 0]])
             img_np = cv2.filter2D(img_np, -1, kernel)
 
-            # STEP 3: Boost contrast (important for DL fonts)
             img_np = cv2.convertScaleAbs(img_np, alpha=1.4, beta=20)
 
             # Convert to PIL
