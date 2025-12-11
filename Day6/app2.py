@@ -69,130 +69,255 @@ def extract_cards_from_page(page_image):
 
     return card_images
 
+# ------------ prepocessing ----------------------
+
+def preprocess_variants(pil_img):
+        img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        den = cv2.fastNlMeansDenoising(gray, h=10)
+        thr = cv2.adaptiveThreshold(den, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 31, 2) #samjla nahi
+        kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]])
+        sharp = cv2.filter2D(den, -1, kernel)
+
+        return [
+            pil_img,
+            Image.fromarray(thr), #threshold array or image
+            Image.fromarray(sharp) # sharped arary or image
+        ]
+        
+
 
 # ---------- Detect Doc Type ----------
+# def detect_document_type(text):
+#     if not text:
+#         return ["UNKNOWN"]
+
+#     t = text.lower()
+#     doc_types = set()
+    
+#     # ---- pan ------
+#     pan_regex = re.search(r"\b[A-Z]{5}\s*\d{4}\s*[A-Z]\b", text, flags=re.I)
+
+#     pan_card_keywords = [
+#         "permanent account number",
+#         "income tax department",
+#         "govt. of india",
+#         "signature",
+#         "father's name",
+#         "date of birth"
+#     ]
+
+#     pan_false_keywords = [
+#         "income tax return",
+#         "itr",
+#         "acknowledgement",
+#         "assessment year",
+#         "taxable income",
+#         "updated return"
+#     ]
+
+#     if pan_regex:
+#         if not any(kw in t for kw in pan_false_keywords):
+#             if any(kw in t for kw in pan_card_keywords):
+#                 doc_types.add("PAN")
+
+#     #----- aadhaar ------
+
+#     aadhaar_num = re.search(r"\b\d{4}\s*\d{4}\s*\d{4}\b", text)
+
+#     aadhaar_card_keywords = [
+#         "unique identification authority of india",
+#         "uidai",
+#         "government of india",
+#         "govt. of india",
+#         "aadhaar",
+#         "eaadhaar",
+#         "address:",
+#         "year of birth",
+#         "yob",
+#         "dob",
+#         "male",
+#         "female",
+#         "qr code",
+#         "proof of identity"
+#     ]
+
+#     aadhaar_false_keywords = [
+#         "itr",
+#         "income tax return",
+#         "acknowledgement",
+#         "assessment year",
+#         "bank",
+#         "branch",
+#         "ifsc",
+#         "statement",
+#         "kyc",
+#         "form",
+#         "voter id",
+#         "pan",
+#         "driving licence",
+#         "transport",
+#         "cov",
+#         "mcwg"
+#     ]
+
+#     if aadhaar_num:
+#         if not any(kw in t for kw in aadhaar_false_keywords):
+#             if any(kw in t for kw in aadhaar_card_keywords):
+#                 doc_types.add("AADHAAR")
+
+
+#     #---- voter id------
+#     if ("voter id" in t or "epic" in t or "election commission" in t):
+#         doc_types.add("VOTER_ID")
+
+#     # --- Driving License-----
+#     dl_keywords = [
+#     "driving", "drivng", "drivng licence", "licence", "lcence", 
+#     "dl", "d l", "dln", "dlno", "dl no", 
+#     "maharashtra", "state motor", 
+#     "authorisationtodrive", "authorisation", 
+#     "form7", "form 7",
+#     "mcwg", "mcwg12", "cov", "class of vehicles"
+#     ]
+
+#     dl_false_keyword = [
+#         "income tax return",
+#         "itr",
+#         "acknowledgement",
+#         "assessment year",
+#         "taxable income",
+#         "updated return",
+#         "bank",
+#         "branch",
+#         "ifsc",
+#         "statement",
+#         "kyc",
+#         "form",
+#         "voter id",
+#         "pan",
+#     ]
+
+
+
+#     if sum(1 for kw in dl_keywords if kw in t) >= 2:
+#         doc_types.add("DRIVING_LICENSE")
+
+#     # ---- bank-----
+#     ifsc_regex = re.search(r"\b[A-Z]{4}0[A-Z0-9]{6}\b", text)
+#     account_regex = re.search(r"\b\d{10,18}\b", text)   # 10–18 digit bank account
+
+#     bank_name_regex = re.search(r"\b[a-zA-Z ]*bank\b", t)
+
+#     bank_keywords = [
+#         "branch", "ifsc", "micr", "cheque", "passbook", "statement",
+#         "account", "a/c", "neft", "rtgs", "imps", "savings", "current account",
+#         "cancelled cheque", "acct", "customer id", "cif no", "cif", "txn",
+#         "deposit", "withdrawal", "balance", "upi", "mobile banking",
+#         "internet banking", "ifsc code", "micr code"
+#     ]
+
+#     # 4) *** NO MORE FALSE KEYWORDS ***
+#     # PAN, AADHAAR, ITR WILL NOT BLOCK BANK DETECTION NOW
+
+#     # --- Strong Bank Rule (Very Accurate) ---
+#     strong_bank_doc = (
+#         bank_name_regex is not None and
+#         account_regex is not None and
+#         ifsc_regex is not None
+#     )
+
+#     weak_bank_doc = (
+#         any(kw in t for kw in bank_keywords) or
+#         ifsc_regex or
+#         account_regex
+#     )
+
+#     if sum(1 for kw in bank_keywords if kw in t) >= 3:
+#         doc_types.add("BANK_DOCUMENT")
+        
+#     if "PAN" in doc_types and "BANK_DOCUMENT" in doc_types:
+#         doc_types.remove("BANK_DOCUMENT")
+
+
+#     if not doc_types:
+#         return ["OTHER"]
+        
+#     return list(doc_types)
+    
 def detect_document_type(text):
-    if not text:
+    if not text or len(text.strip()) < 10:
         return ["UNKNOWN"]
 
     t = text.lower()
     doc_types = set()
-    
-    # ---- pan ------
-    pan_regex = re.search(r"\b[A-Z]{5}\s*\d{4}\s*[A-Z]\b", text, flags=re.I)
 
-    pan_card_keywords = [
-        "permanent account number",
-        "income tax department",
-        "govt. of india",
-        "signature",
-        "father's name",
-        "date of birth"
-    ]
+    pan_regex = re.search(r"\b[A-Z]{5}\d{4}[A-Z]\b", text)
 
-    pan_false_keywords = [
-        "income tax return",
-        "itr",
-        "acknowledgement",
-        "assessment year",
-        "taxable income",
-        "updated return"
-    ]
+    pan_keywords = ["permanent account number", "income tax department", "govt. of india", "signature", "father"]
 
-    if pan_regex:
-        if not any(kw in t for kw in pan_false_keywords):
-            if any(kw in t for kw in pan_card_keywords):
-                doc_types.add("PAN")
+    if pan_regex and any(k in t for k in pan_keywords):
+        doc_types.add("PAN")
+    elif sum(k in t for k in pan_keywords) >= 2:
+        doc_types.add("PAN")
 
-    #----- aadhaar ------
+    aadhaar_strong = re.search(r"\b\d{4}\s?\d{4}\s?\d{4}\b", text)
 
-    aadhaar_num = re.search(r"\b\d{4}\s*\d{4}\s*\d{4}\b", text)
+    aadhaar_keywords = ["aadhaar", "uidai", "unique identification", "government of india", "yob", "dob", "address", "male", "female"]
 
-    aadhaar_card_keywords = [
-        "unique identification authority of india",
-        "uidai",
-        "government of india",
-        "govt. of india",
-        "aadhaar",
-        "eaadhaar",
-        "address:",
-        "year of birth",
-        "yob",
-        "dob",
-        "male",
-        "female",
-        "qr code",
-        "proof of identity"
-    ]
-
-    aadhaar_false_keywords = [
-        "itr",
-        "income tax return",
-        "acknowledgement",
-        "assessment year",
-        "bank",
-        "branch",
-        "ifsc",
-        "statement",
-        "kyc",
-        "form",
-        "voter id",
-        "pan",
-        "driving licence",
-        "transport",
-        "cov",
-        "mcwg"
-    ]
-
-    if aadhaar_num:
-        if not any(kw in t for kw in aadhaar_false_keywords):
-            if any(kw in t for kw in aadhaar_card_keywords):
-                doc_types.add("AADHAAR")
+    if aadhaar_strong and any(k in t for k in aadhaar_keywords):
+        doc_types.add("AADHAAR")
+    elif sum(k in t for k in aadhaar_keywords) >= 2:
+        doc_types.add("AADHAAR")
 
 
-    #---- voter id------
-    if ("voter id" in t or "epic" in t or "election commission" in t):
-        doc_types.add("VOTER_ID")
+    dl_pattern = re.search(r"\b[A-Z]{2}\d{2}\s?\d{11}\b", text)
 
-    # --- Driving License-----
-    dl_keywords = [
-    "driving", "drivng", "drivng licence", "licence", "lcence", 
-    "dl", "d l", "dln", "dlno", "dl no", 
-    "maharashtra", "state motor", 
-    "authorisationtodrive", "authorisation", 
-    "form7", "form 7",
-    "mcwg", "mcwg12", "cov", "class of vehicles"
-    ]
+    dl_keywords = ["driving licence", "driving license", "transport department", "cov", "class of vehicles", "mcwg", "form 7"]
 
-    if any(kw in t for kw in dl_keywords):
+    if dl_pattern and any(k in t for k in dl_keywords):
+        doc_types.add("DRIVING_LICENSE")
+    elif sum(k in t for k in dl_keywords) >= 2:
         doc_types.add("DRIVING_LICENSE")
 
-    # ---- bank-----
-    bank_keywords = [
-        "bank", "branch", "ifsc", "micr", "cheque", "passbook", "statement",
-        "account", "a/c", "neft", "rtgs", "imps", "savings", "current account",
-        "cancelled cheque"
-    ]
+    voter_regex = re.search(r"\b[A-Z]{2}\d{7}\b", text)
 
+    voter_keywords = ["election commission", "voter id", "epic", "ceo", "booth"]
+
+    if voter_regex and any(k in t for k in voter_keywords):
+        doc_types.add("VOTER_ID")
+    elif sum(k in t for k in voter_keywords) >= 2:
+        doc_types.add("VOTER_ID")
+
+  
     ifsc_regex = re.search(r"\b[A-Z]{4}0[A-Z0-9]{6}\b", text)
-    micr_regex = re.search(r"\b\d{9}\b", text)
-    account_number = re.search(r"\b\d{9,18}\b", text)
+    acct_regex = re.search(r"\b\d{9,18}\b", text)
+    bank_name = re.search(r"\b[a-z ]+ bank\b", t)
 
-    is_bank_doc = (
-        any(kw in t for kw in bank_keywords)
-        or ifsc_regex
-        or micr_regex
-        or account_number
-    )
+    bank_keywords = ["branch", "ifsc", "micr", "passbook", "account", "customer id", "cif", "neft", "rtgs"]
 
-    if is_bank_doc:
-        doc_types.add("BANK DOCUMENT")
+    bank_strong = ifsc_regex and acct_regex and bank_name
+
+    if bank_strong:
+        doc_types.add("BANK_DOCUMENT")
+    elif sum(k in t for k in bank_keywords) >= 3:
+        doc_types.add("BANK_DOCUMENT")
+
+ 
+    if "AADHAAR" in doc_types and "VOTER_ID" in doc_types:
+        doc_types.discard("VOTER_ID")
+
+    if "PAN" in doc_types and "BANK_DOCUMENT" in doc_types:
+        doc_types.discard("BANK_DOCUMENT")
+
+    if "DRIVING_LICENSE" in doc_types and "BANK_DOCUMENT" in doc_types:
+        doc_types.discard("BANK_DOCUMENT")
 
     if not doc_types:
         return ["OTHER"]
-    
+
     return list(doc_types)
-    
+
 
 
 # ---------- Main OCR ----------
@@ -201,19 +326,6 @@ def run_ocr(filepath, engine_id):
     text = ""
     # --- Tesseract ---
     if engine_id == 1:
-        def preprocess_variants(pil_img):
-            img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
-            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            den = cv2.fastNlMeansDenoising(gray, h=10)
-            thr = cv2.adaptiveThreshold(den, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 31, 2) #samjla nahi
-            kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]])
-            sharp = cv2.filter2D(den, -1, kernel)
-
-            return [
-                pil_img,
-                Image.fromarray(thr), #threshold array or image
-                Image.fromarray(sharp) # sharped arary or image
-            ]
         
         
 
