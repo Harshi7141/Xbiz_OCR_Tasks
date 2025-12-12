@@ -1,0 +1,8 @@
+
+--------- NEW REQUEST ---------
+TXN: TXN-5457
+OCR Engine: 3
+OCR MSG: PaddleOCR success
+Detected: ['PAN']
+Raw OCR Output:
+FaRHTST 5 HRA PT TAX DEPARTMENT GOVT. OFI Ferrel ciel zioal chs Permanent Account Number Card BMFPN4237E HA KALYAN NAIKWADE NAIKWADE 3133191 ZTR / Signature

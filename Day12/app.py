@@ -29,6 +29,69 @@ pytesseract.pytesseract.tesseract_cmd = r"C:\\Program Files\\Tesseract-OCR\\tess
 
 # ------ DESKEW + AUTO-ROTATE -----------
 
+# def deskew_and_autorotate(img_bgr, save_prefix):
+
+#     try:
+#         cv2.imwrite(f"{save_prefix}_original.jpg", img_bgr)
+#     except:
+#         pass
+
+#     gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
+#     _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+#     coords = np.column_stack(np.where(thresh > 0))
+    
+
+#     if len(coords) > 20:
+#         angle = cv2.minAreaRect(coords)[-1]
+#         if angle < -45:
+#             angle = -(90 + angle)
+#         else:
+#             angle = -angle
+
+#         (h, w) = img_bgr.shape[:2]
+#         M = cv2.getRotationMatrix2D((w // 2, h // 2), angle, 1.0)
+#         deskewed = cv2.warpAffine(
+#             img_bgr, M, (w, h),
+#             flags=cv2.INTER_CUBIC,
+#             borderMode=cv2.BORDER_CONSTANT,
+#             borderValue=(255, 255, 255)
+#         )
+#     else:
+#         deskewed = img_bgr.copy()
+
+#     pad = 80
+#     deskewed = cv2.copyMakeBorder(
+#         deskewed, pad, pad, pad, pad,
+#         cv2.BORDER_CONSTANT, value=[255, 255, 255]
+#     )
+
+#     try:
+#         cv2.imwrite(f"{save_prefix}_deskew.jpg", deskewed)
+#     except:
+#         pass
+
+#     try:
+#         osd = pytesseract.image_to_osd(deskewed)
+#         rot = int(re.search(r"Rotate: (\d+)", osd).group(1))
+#     except:
+#         rot = 0
+
+#     if rot == 90:
+#         final = cv2.rotate(deskewed, cv2.ROTATE_90_CLOCKWISE)
+#     elif rot == 180:
+#         final = cv2.rotate(deskewed, cv2.ROTATE_180)
+#     elif rot == 270:
+#         final = cv2.rotate(deskewed, cv2.ROTATE_90_COUNTERCLOCKWISE)
+#     else:
+#         final = deskewed
+
+#     try:
+#         cv2.imwrite(f"{save_prefix}_final.jpg", final)
+#     except:
+#         pass
+
+#     return final
+
 def deskew_and_autorotate(img_bgr, save_prefix):
 
     try:
@@ -36,94 +99,83 @@ def deskew_and_autorotate(img_bgr, save_prefix):
     except:
         pass
 
-    # -------- DESKEW --------
+    # ---------- DESKEW WITH TILT CHECK ----------
     gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
-    _, thresh = cv2.threshold(
-        gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU
-    )
+    _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
     coords = np.column_stack(np.where(thresh > 0))
 
-    angle = 0
     deskewed = img_bgr.copy()
 
     if len(coords) > 20:
+
         angle = cv2.minAreaRect(coords)[-1]
 
+        # Normalize angle
         if angle < -45:
             angle = -(90 + angle)
         else:
             angle = -angle
 
-        (h0, w0) = img_bgr.shape[:2]
-        M = cv2.getRotationMatrix2D((w0 // 2, h0 // 2), angle, 1.0)
+        print(f"Detected angle = {angle}")
 
-        deskewed = cv2.warpAffine(
-            img_bgr, M, (w0, h0),
-            flags=cv2.INTER_CUBIC,
-            borderMode=cv2.BORDER_CONSTANT,
-            borderValue=(255, 255, 255)
-        )
+        # 👉 NEW CONDITION: Deskew only if tilt > 2°
+        if abs(angle) > 2:
+            print("Tilt detected → Applying deskew")
+
+            (h, w) = img_bgr.shape[:2]
+            M = cv2.getRotationMatrix2D((w // 2, h // 2), angle, 1.0)
+
+            deskewed = cv2.warpAffine(
+                img_bgr, M, (w, h),
+                flags=cv2.INTER_CUBIC,
+                borderMode=cv2.BORDER_CONSTANT,
+                borderValue=(255, 255, 255)
+            )
+        else:
+            print("No tilt → Deskew skipped")
+            deskewed = img_bgr.copy()
+
+    else:
+        print("Not enough text pixels → Deskew skipped")
+        deskewed = img_bgr.copy()
+
+    # ---------- ADD BORDER ----------
+    pad = 80
+    deskewed = cv2.copyMakeBorder(
+        deskewed, pad, pad, pad, pad,
+        cv2.BORDER_CONSTANT, value=[255, 255, 255]
+    )
 
     try:
         cv2.imwrite(f"{save_prefix}_deskew.jpg", deskewed)
     except:
         pass
 
-    # --- orientation process ------------
+    # ---------- OCR ORIENTATION (OSD) ----------
+    try:
+        osd = pytesseract.image_to_osd(deskewed)
+        rot = int(re.search(r"Rotate: (\d+)", osd).group(1))
+    except:
+        rot = 0
 
-    h, w = deskewed.shape[:2]
+    print(f"Tesseract OSD rotation = {rot}")
 
-    # ---- CONDITION 1: Height > Width => 0+90° किंवा 180+90°  ----
-    # if h > w: 
-    #     final = cv2.rotate(deskewed, cv2.ROTATE_90_COUNTERCLOCKWISE)
-
-    
-    if h > w:
-        
-        # Detect text orientation using Paddle CLS
-        try:
-            orientation = paddleocr_reader.ocr(deskewed, det=False, rec=False, cls=True)
-            rotation_angle = orientation[0][0]['angle']
-        except:
-            rotation_angle = 0
-
-        if rotation_angle == 90:
-            final = cv2.rotate(deskewed, cv2.ROTATE_90_CLOCKWISE)
-
-        # CW 90° image -> Paddle angle = 270 -> Fix by rotating ACW
-        elif rotation_angle == 270:
-            final = cv2.rotate(deskewed, cv2.ROTATE_90_COUNTERCLOCKWISE)
-
-        '''jar else thevla tar te 180 check na hota ch te image rotate karel so comment kela'''
-        # else: 
-        #     # If CLS fails, default assume ACW-90 → rotate CW
-        #     final = cv2.rotate(deskewed, cv2.ROTATE_90_CLOCKWISE)
-
+    # ---------- APPLY FINAL ROTATION ----------
+    if rot == 90:
+        final = cv2.rotate(deskewed, cv2.ROTATE_90_CLOCKWISE)
+    elif rot == 180:
+        final = cv2.rotate(deskewed, cv2.ROTATE_180)
+    elif rot == 270:
+        final = cv2.rotate(deskewed, cv2.ROTATE_90_COUNTERCLOCKWISE)
     else:
-        # ---- CONDITION 2: Landscape आहे => आता तुझा Paddle OCR rotation चालेल ----
-        try:
-            orientation = paddleocr_reader.ocr(deskewed, det=False, rec=False, cls=True)
-            rotation_angle = orientation[0][0]['angle']
-        except:
-            rotation_angle = 0
+        final = deskewed
 
-        # if rotation_angle == 90:
-        #     final = cv2.rotate(deskewed, cv2.ROTATE_90_CLOCKWISE)
-        if rotation_angle == 180:
-            final = cv2.rotate(deskewed, cv2.ROTATE_180)
-        # elif rotation_angle == 270:
-        #     final = cv2.rotate(deskewed, cv2.ROTATE_90_COUNTERCLOCKWISE)
-        else:
-            final = deskewed
-
-    # Save final
     try:
         cv2.imwrite(f"{save_prefix}_final.jpg", final)
     except:
-        pass    
+        pass
 
     return final
-
 
 
 # ------------ IMPROVED PREPROCESSING ------------

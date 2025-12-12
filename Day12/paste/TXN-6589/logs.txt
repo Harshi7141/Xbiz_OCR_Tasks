@@ -1,0 +1,8 @@
+
+--------- NEW REQUEST ---------
+TXN: TXN-6589
+OCR Engine: 3
+OCR MSG: PaddleOCR success
+Detected: ['PAN']
+Raw OCR Output:
+STRCDY FaHIST HRA HRCBTR INCOME TAX DEPARTMENT GOVT. OF INDIA ca    Permanent Account Number Card GSDPB8663K AJAY GORAKSHA BADE  /Name f # * / Father's Name GORAKSHA BADE w #t wder / Date of Birth 11/07/2004 ro / Signature 8971578

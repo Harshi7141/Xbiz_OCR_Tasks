@@ -1,0 +1,8 @@
+
+--------- NEW REQUEST ---------
+TXN: TXN-8494
+OCR Engine: 3
+OCR MSG: PaddleOCR success
+Detected: ['AADHAAR']
+Raw OCR Output:
+SHRA HRR Government of India Hoo 1ollor Foo Manisha Gajanan Sonune 4:o0 aicR1 Fo0 Husband: Gajanan Vasantrao Sonune H R /DOB 07/01/1991 Ft/ Female 9749 2825 6832 -HH4 HUH 3
