@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Document OCR Upload</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .preview-img {
+            max-width: 100%;
+            max-height: 250px;
+            border: 1px solid #ddd;
+            padding: 5px;
+        }
+        pre {
+            background: #111;
+            color: #0f0;
+            padding: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container mt-5">
+
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">📄 OCR Document Upload</h4>
+        </div>
+
+        <div class="card-body">
+
+            <!-- Upload Form -->
+            <form id="uploadForm">
+                <div class="mb-3">
+                    <label class="form-label">Select Image / PDF</label>
+                    <input type="file" class="form-control" id="fileInput" name="file" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">OCR Engine</label>
+                    <select class="form-select" name="ocr_engine">
+                        <option value="1">Tesseract</option>
+                        <option value="2">EasyOCR</option>
+                        <option value="3">PaddleOCR</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-success w-100">
+                    🚀 Upload & Process
+                </button>
+            </form>
+
+            <!-- Loader + Timer -->
+            <div id="loaderSection" class="text-center mt-4 d-none">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="mt-2 fw-bold">
+                    Processing... <span id="timer">0</span>s
+                </p>
+            </div>
+
+            <hr>
+
+            <!-- Image Preview -->
+            <div id="previewSection" class="d-none">
+                <h5>📷 Uploaded Image Preview</h5>
+                <img id="previewImg" class="preview-img">
+            </div>
+
+            <hr>
+
+            <!-- Document Type -->
+            <div id="docTypeSection" class="d-none">
+                <h5>🪪 Detected Document Type</h5>
+                <span id="docType" class="badge bg-info fs-6"></span>
+            </div>
+
+            <hr>
+
+            <!-- OCR Text -->
+            <div id="ocrTextSection" class="d-none">
+                <h5>📝 OCR Text</h5>
+                <pre id="ocrText"></pre>
+            </div>
+
+            <hr>
+
+            <!-- Full Response -->
+            <div id="responseSection" class="d-none">
+                <h5>📦 Full API Response</h5>
+                <pre id="fullResponse"></pre>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    const form = document.getElementById("uploadForm");
+    const fileInput = document.getElementById("fileInput");
+
+    const loaderSection = document.getElementById("loaderSection");
+    const timerEl = document.getElementById("timer");
+
+    const previewSection = document.getElementById("previewSection");
+    const docTypeSection = document.getElementById("docTypeSection");
+    const ocrTextSection = document.getElementById("ocrTextSection");
+    const responseSection = document.getElementById("responseSection");
+
+    let timerInterval = null;
+    let seconds = 0;
+
+    function resetUI() {
+        docTypeSection.classList.add("d-none");
+        ocrTextSection.classList.add("d-none");
+        responseSection.classList.add("d-none");
+
+        document.getElementById("docType").innerText = "";
+        document.getElementById("ocrText").innerText = "";
+        document.getElementById("fullResponse").innerText = "";
+    }
+
+    function startTimer() {
+        seconds = 0;
+        timerEl.innerText = "0";
+        loaderSection.classList.remove("d-none");
+
+        timerInterval = setInterval(() => {
+            seconds++;
+            timerEl.innerText = seconds;
+        }, 1000);
+    }
+
+    function stopTimer() {
+        clearInterval(timerInterval);
+        loaderSection.classList.add("d-none");
+    }
+
+    form.addEventListener("submit", async function (e) {
+        e.preventDefault();
+
+        resetUI();
+        startTimer();
+
+        const formData = new FormData(form);
+
+        try {
+            const res = await fetch("/upload", {
+                method: "POST",
+                body: formData
+            });
+
+            const data = await res.json();
+            stopTimer();
+
+            if (data.input_image) {
+                document.getElementById("previewImg").src =
+                    "data:image/jpeg;base64," + data.input_image;
+                previewSection.classList.remove("d-none");
+            }
+
+            if (data.documentType) {
+                document.getElementById("docType").innerText =
+                    Array.isArray(data.documentType)
+                        ? data.documentType.join(", ")
+                        : data.documentType;
+                docTypeSection.classList.remove("d-none");
+            }
+
+            if (data.ocr_result) {
+                document.getElementById("ocrText").innerText = data.ocr_result;
+                ocrTextSection.classList.remove("d-none");
+            }
+
+            document.getElementById("fullResponse").innerText =
+                JSON.stringify(data, null, 4);
+            responseSection.classList.remove("d-none");
+
+        } catch (err) {
+            stopTimer();
+            alert("Error while processing document");
+            console.error(err);
+        }
+    });
+
+    // Local preview before upload
+    fileInput.addEventListener("change", function () {
+        resetUI();
+
+        const file = fileInput.files[0];
+        if (file && file.type.startsWith("image")) {
+            const reader = new FileReader();
+            reader.onload = e => {
+                document.getElementById("previewImg").src = e.target.result;
+                previewSection.classList.remove("d-none");
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+</script>
+
+</body>
+</html>

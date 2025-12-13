@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 import pytesseract
 from PIL import Image
 import fitz
@@ -21,126 +21,13 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # ---------- OCR Engines ----------
 TESS_LANGS = "eng+hin"
-easyocr_reader = easyocr.Reader(['en', 'hi'], gpu=False)
+easyocr_reader = easyocr.Reader(['en'], gpu=False)
 paddleocr_reader = PaddleOCR(lang='en', use_textline_orientation=True)
 pytesseract.pytesseract.tesseract_cmd = r"C:\\Program Files\\Tesseract-OCR\\tesseract.exe"
 
 
 
 # ------ DESKEW + AUTO-ROTATE -----------
-
-# def deskew_and_autorotate(img_bgr, save_prefix):
-
-#     try:
-#         cv2.imwrite(f"{save_prefix}_original.jpg", img_bgr)
-#     except:
-#         pass
-
-#     # -------- DESKEW --------
-#     gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
-#     _, thresh = cv2.threshold(
-#         gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU
-#     )
-#     coords = np.column_stack(np.where(thresh > 0))
-
-#     angle = 0
-#     deskewed = img_bgr.copy()
-
-#     print("\n================= DESKEW DEBUG =================")
-
-#     if len(coords) > 20:
-#         angle = cv2.minAreaRect(coords)[-1]
-
-#         orig_angle = angle
-#         if angle < -45:
-#             angle = -(90 + angle)
-#         else:
-#             angle = -angle
-        
-#         print(f"Raw angle: {orig_angle}")
-#         print(f"Normalized angle: {angle}")
-        
-#         if abs(angle) > 2:  
-#             print(f"Tilt detected! Applying deskew (angle = {angle})")
-
-#             (h0, w0) = img_bgr.shape[:2]
-#             M = cv2.getRotationMatrix2D((w0 // 2, h0 // 2), angle, 1.0)
-
-#             deskewed = cv2.warpAffine(
-#                 img_bgr, M, (w0, h0),
-#                 flags=cv2.INTER_CUBIC,
-#                 borderMode=cv2.BORDER_CONSTANT,
-#                 borderValue=(255, 255, 255)
-#             )
-#         else:
-#             print(f"No tilt detected (angle = {angle}) → Skipping deskew")
-#             # No tilt = no deskew
-#             deskewed = img_bgr
-#     else:
-#         print("Insufficient text pixels → Skipping deskew")
-
-
-#     try:
-#         cv2.imwrite(f"{save_prefix}_deskew.jpg", deskewed)
-#     except:
-#         pass
-
-#     print("=================================================\n")
-#     # --- orientation process ------------
-
-#     h, w = deskewed.shape[:2]
-
-#     # ---- CONDITION 1: Height > Width => 0+90° किंवा 180+90°  ----
-#     # if h > w: 
-#     #     final = cv2.rotate(deskewed, cv2.ROTATE_90_COUNTERCLOCKWISE)
-#     try:
-#         orientation = paddleocr_reader.ocr(deskewed, det=False, rec=False, cls=True)
-#         rotation_angle = orientation[0][0]['angle']
-#     except:
-#         rotation_angle = 0
-    
-#     if h > w:
-
-#         print("Portrait mode detected")
-
-#         if rotation_angle == 90:
-#             final = cv2.rotate(deskewed, cv2.ROTATE_90_CLOCKWISE)
-
-#         # CW 90° image -> Paddle angle = 270 -> Fix by rotating ACW
-#         elif rotation_angle == 270:
-#             final = cv2.rotate(deskewed, cv2.ROTATE_90_COUNTERCLOCKWISE)
-
-#         else: 
-#             print("Landscape mode detected")
-#             # If CLS fails, default assume ACW-90 → rotate CW
-#             final = cv2.rotate(deskewed, cv2.ROTATE_90_CLOCKWISE)
-
-#     else:
-#         # ---- CONDITION 2: Landscape आहे => आता तुझा Paddle OCR rotation चालेल ----
-#         try:
-#             orientation = paddleocr_reader.ocr(deskewed, det=False, rec=False, cls=True)
-#             rotation_angle = orientation[0][0]['angle']
-#         except:
-#             rotation_angle = 0
-
-#         # if rotation_angle == 90:
-#         #     final = cv2.rotate(deskewed, cv2.ROTATE_90_CLOCKWISE)
-#         if rotation_angle == 180:
-#             final = cv2.rotate(deskewed, cv2.ROTATE_180)
-#         # elif rotation_angle == 270:
-#         #     final = cv2.rotate(deskewed, cv2.ROTATE_90_COUNTERCLOCKWISE)
-#         else:
-#             final = deskewed
-
-#     # Save final
-#     try:
-#         cv2.imwrite(f"{save_prefix}_final.jpg", final)
-#     except:
-#         pass    
-
-#     return final
-
-'''best rotation tilt'''
 
 # def deskew_and_autorotate(img_bgr, save_prefix):
 
@@ -205,105 +92,197 @@ pytesseract.pytesseract.tesseract_cmd = r"C:\\Program Files\\Tesseract-OCR\\tess
 
 #     return final
 
-def safe_rotate(img, angle):
-    """Rotate without cropping by using a larger canvas."""
-    (h, w) = img.shape[:2]
+# def deskew_and_autorotate(img_bgr, save_prefix):
 
-    # 50% bigger canvas
-    new_w = int(w * 1.5)
-    new_h = int(h * 1.5)
+#     try:
+#         cv2.imwrite(f"{save_prefix}_original.jpg", img_bgr)
+#     except:
+#         pass
 
-    # white canvas
-    canvas = np.ones((new_h, new_w, 3), dtype=np.uint8) * 255
+#     # ---------- DESKEW WITH TILT CHECK ----------
+#     gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
+#     _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+#     coords = np.column_stack(np.where(thresh > 0))
 
-    # center offset
-    x = (new_w - w) // 2
-    y = (new_h - h) // 2
+#     deskewed = img_bgr.copy()
 
-    # paste original in middle
-    canvas[y:y+h, x:x+w] = img
+#     if len(coords) > 20:
 
-    # rotate canvas
-    M = cv2.getRotationMatrix2D((new_w // 2, new_h // 2), angle, 1.0)
-    rotated = cv2.warpAffine(canvas, M, (new_w, new_h),
-                             flags=cv2.INTER_CUBIC,
-                             borderValue=(255, 255, 255))
+#         angle = cv2.minAreaRect(coords)[-1]
 
-    return rotated
+#         # Normalize angle
+#         if angle < -45:
+#             angle = -(90 + angle)
+#         else:
+#             angle = -angle
+
+#         print(f"Detected angle = {angle}")
+
+#         # 👉 NEW CONDITION: Deskew only if tilt > 2°
+#         if abs(angle) > 2:
+#             print("Tilt detected → Applying deskew")
+
+#             (h, w) = img_bgr.shape[:2]
+#             M = cv2.getRotationMatrix2D((w // 2, h // 2), angle, 1.0)
+
+#             deskewed = cv2.warpAffine(
+#                 img_bgr, M, (w, h),
+#                 flags=cv2.INTER_CUBIC,
+#                 borderMode=cv2.BORDER_CONSTANT,
+#                 borderValue=(255, 255, 255)
+#             )
+#         else:
+#             print("No tilt → Deskew skipped")
+#             deskewed = img_bgr.copy()
+
+#     else:
+#         print("Not enough text pixels → Deskew skipped")
+#         deskewed = img_bgr.copy()
+
+#     # ---------- ADD BORDER ----------
+#     # pad = 80
+#     # deskewed = cv2.copyMakeBorder(
+#     #     deskewed, pad, pad, pad, pad,
+#     #     cv2.BORDER_CONSTANT, value=[255, 255, 255]
+#     # )
+
+#     try:
+#         cv2.imwrite(f"{save_prefix}_deskew.jpg", deskewed)
+#     except:
+#         pass
+
+#     # ---------- OCR ORIENTATION (OSD) ----------
+#     try:
+#         osd = pytesseract.image_to_osd(deskewed)
+#         rot = int(re.search(r"Rotate: (\d+)", osd).group(1))
+#     except:
+#         rot = 0
+
+#     print(f"Tesseract OSD rotation = {rot}")
+
+
+#     # ---------- APPLY FINAL ROTATION ----------
+#     if rot == 90:
+#         final = cv2.rotate(deskewed, cv2.ROTATE_90_CLOCKWISE)
+#     # elif rot == 180:
+#     #     final = cv2.rotate(deskewed, cv2.ROTATE_180)
+#     elif rot == 270:
+#         final = cv2.rotate(deskewed, cv2.ROTATE_90_COUNTERCLOCKWISE)
+#     else:
+#         final = deskewed
+
+#     try:
+#         cv2.imwrite(f"{save_prefix}_final.jpg", final)
+#     except:
+#         pass
+
+#     return final
+
+# ------------------------------------------------------
+# Helper: Save image safely
+# ------------------------------------------------------
+def safe_imwrite(path, img):
+    try:
+        cv2.imwrite(path, img)
+    except:
+        pass
+
 
 
 def deskew_and_autorotate(img_bgr, save_prefix):
+    safe_imwrite(f"{save_prefix}_original.jpg", img_bgr)
 
-    try:
-        cv2.imwrite(f"{save_prefix}_original.jpg", img_bgr)
-    except:
-        pass
-
-    # ---------- DESKEW WITH TILT CHECK ----------
+    # ---------------------------------------------------------------
+    # STEP 1 — DESKEW (FIX TILT) USING HOUGH LINE TRANSFORM
+    # ---------------------------------------------------------------
     gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
-    _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-    coords = np.column_stack(np.where(thresh > 0))
+    gray_blur = cv2.GaussianBlur(gray, (5, 5), 0)
+    edges = cv2.Canny(gray_blur, 50, 150, apertureSize=3)
 
+    lines = cv2.HoughLines(edges, 1, np.pi / 180, 150)
     deskewed = img_bgr.copy()
 
-    if len(coords) > 20:
+    if lines is not None:
+        angles = []
 
-        angle = cv2.minAreaRect(coords)[-1]
+        for line in lines:
+            rho, theta = line[0]
+            angle = (theta * 180 / np.pi) - 90
 
-        # Normalize angle
-        if angle < -45:
-            angle = -(90 + angle)
-        else:
-            angle = -angle
+            # Aadhaar has many horizontal visual lines → focus on near-horizontal
+            if -45 < angle < 45:
+                angles.append(angle)
 
-        print(f"Detected angle = {angle}")
+        if len(angles) > 0:
+            median_angle = np.median(angles)
+            print("Detected tilt angle:", median_angle)
 
-        # 👉 Deskew only if tilt > 2°
-        if abs(angle) > 2:
-            print("Tilt detected → Applying deskew using safe_rotate()")
-            deskewed = safe_rotate(img_bgr, angle)
-        else:
-            print("No tilt → Deskew skipped")
+            if abs(median_angle) > 1:
+                h, w = img_bgr.shape[:2]
+                M = cv2.getRotationMatrix2D((w // 2, h // 2), median_angle, 1.0)
+                deskewed = cv2.warpAffine(
+                    img_bgr, M, (w, h),
+                    flags=cv2.INTER_CUBIC,
+                    borderMode=cv2.BORDER_CONSTANT,
+                    borderValue=(255, 255, 255)
+                )
     else:
-        print("Not enough text pixels → Deskew skipped")
+        print("No lines detected → skipping deskew")
 
-    # ---------- ADD BORDER ----------
-    pad = 80
-    deskewed = cv2.copyMakeBorder(
-        deskewed, pad, pad, pad, pad,
-        cv2.BORDER_CONSTANT, value=[255, 255, 255]
-    )
+    safe_imwrite(f"{save_prefix}_deskew.jpg", deskewed)
 
-    try:
-        cv2.imwrite(f"{save_prefix}_deskew.jpg", deskewed)
-    except:
-        pass
+    # ---------------------------------------------------------------
+    # STEP 2 — FIND UPRIGHT ROTATION (0°, 90°, 180°, 270°) USING OCR
+    # ---------------------------------------------------------------
+    def rotate(img, deg):
+        if deg == 0: return img
+        if deg == 90: return cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
+        if deg == 180: return cv2.rotate(img, cv2.ROTATE_180)
+        if deg == 270: return cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
 
-    # ---------- OCR ORIENTATION (OSD) ----------
-    try:
-        osd = pytesseract.image_to_osd(deskewed)
-        rot = int(re.search(r"Rotate: (\d+)", osd).group(1))
-    except:
-        rot = 0
+    def ocr_score(img):
+        try:
+            small = cv2.resize(img, None, fx=0.6, fy=0.6)
+            pil = Image.fromarray(cv2.cvtColor(small, cv2.COLOR_BGR2RGB))
+            txt = pytesseract.image_to_string(pil, config="--psm 6")
+            # Count readable English/Hindi/Gujarati tokens length >= 3
+            tokens = re.findall(r"[A-Za-z0-9]{3,}", txt)
+            return len(tokens), txt
+        except:
+            return 0, ""
 
-    print(f"Tesseract OSD rotation = {rot}")
+    angles = [0, 90, 180, 270]
+    best_img = None
+    best_score = -1
+    best_text = ""
 
-    # ---------- FINAL ROTATION USING cv2.rotate ----------
-    if rot == 90:
-        final = cv2.rotate(deskewed, cv2.ROTATE_90_CLOCKWISE)
-    elif rot == 180:
-        final = cv2.rotate(deskewed, cv2.ROTATE_180)
-    elif rot == 270:
-        final = cv2.rotate(deskewed, cv2.ROTATE_90_COUNTERCLOCKWISE)
-    else:
-        final = deskewed
+    for ang in angles:
+        rimg = rotate(deskewed, ang)
+        score, text = ocr_score(rimg)
 
-    try:
-        cv2.imwrite(f"{save_prefix}_final.jpg", final)
-    except:
-        pass
+        if score > best_score:
+            best_score = score
+            best_img = rimg
+            best_text = text
 
-    return final
+    upright = best_img  # This is ALWAYS the correct orientation
+
+    # ---------------------------------------------------------------
+    # STEP 3 — PHOTO SHOULD BE ON LEFT (Aadhaar Standard Layout)
+    # ---------------------------------------------------------------
+    h, w = upright.shape[:2]
+    left = upright[:, :w // 2]
+    right = upright[:, w // 2:]
+
+    # Aadhaar photo is darker → if right is darker, rotate 180°
+    if np.mean(left) > np.mean(right):
+        upright = cv2.rotate(upright, cv2.ROTATE_180)
+
+    # ---------------------------------------------------------------
+    # SAVE FINAL OUTPUT
+    # ---------------------------------------------------------------
+    safe_imwrite(f"{save_prefix}_final.jpg", upright)
+    return upright
 
 
 # ------------ IMPROVED PREPROCESSING ------------
@@ -644,6 +623,10 @@ def run_ocr(filepath, engine_id, txn_folder):
 
     return "", "Invalid engine"
 
+
+@app.route("/")
+def home():
+    return render_template("index1.html")
 
 # ---------- Upload Route ----------
 @app.route('/upload', methods=['POST'])
